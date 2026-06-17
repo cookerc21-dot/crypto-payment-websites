@@ -1,6 +1,9 @@
 {
-  "buildCommand": "pip install -r requirements.txt",
+  "buildCommand": "echo 'static site'",
   "outputDirectory": ".",
-  "framework": "flask",
-  "devCommand": "python app.py"
+  "framework": "other",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
 }
