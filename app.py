@@ -1,7 +1,9 @@
 import os
 from flask import Flask, send_from_directory, jsonify, request
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
 
 WALLET_ADDRESS = "0x41A9Fbad043922238f0e16EE91d7D9dDC3B44314"
 
@@ -13,11 +15,19 @@ SERVICE_PRICES = {
 
 @app.route('/')
 def index():
-    return send_from_directory('.', 'index.html')
+    return send_from_directory(BASE_DIR, 'index.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
-    return send_from_directory('.', path)
+    # Try to serve from base directory first
+    file_path = os.path.join(BASE_DIR, path)
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        return send_from_directory(BASE_DIR, path)
+    # If it's a directory, try index.html
+    index_path = os.path.join(file_path, 'index.html')
+    if os.path.exists(index_path):
+        return send_from_directory(file_path, 'index.html')
+    return "Not found", 404
 
 @app.route('/api/verify-payment', methods=['POST'])
 def verify_payment():
