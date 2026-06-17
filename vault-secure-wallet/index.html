@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Vault - Secure Wallet Storage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/esm.min.js" type="module"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        
+        .vault-bg {
+            background: linear-gradient(135deg, #1a0033, #0a0a0a, #2d014d);
+            position: relative;
+        }
+        
+        .vault-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.3) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        
+        .vault-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);
+            position: relative;
+        }
+        
+        .vault-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #8b5cf6, transparent);
+            animation: scan-vertical 3s linear infinite;
+        }
+        
+        @keyframes scan-vertical {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100vh); }
+        }
+        
+        .crypto-input {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.5);
+            color: #8b5cf6;
+            font-family: 'Space Mono', monospace;
+        }
+        
+        .vault-button {
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .vault-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.8);
+        }
+        
+        .wallet-connect-btn {
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            box-shadow: 0 0 25px rgba(236, 72, 153, 0.5);
+        }
+        
+        .wallet-connect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 35px rgba(236, 72, 153, 0.8);
+        }
+        
+        .encrypted {
+            filter: blur(5px);
+            transition: filter 0.3s ease;
+        }
+        
+        .encrypted:hover {
+            filter: blur(0);
+        }
+        
+        .security-meter {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .security-fill {
+            background: linear-gradient(90deg, #10b981, #34d399);
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+        
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .typing-cursor {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        .backup-animation {
+            animation: pulse-backup 2s infinite;
+        }
+        
+        @keyframes pulse-backup {
+            0%, 100% { box-shadow: 0 0 10px rgba(236, 72, 153, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(236, 72, 153, 0.9); }
+        }
+        
+        .data-flow {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .data-flow::after {
+            content: '→';
+            position: absolute;
+            right: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #ec4899;
+            font-weight: bold;
+            animation: data-flow 2s infinite;
+        }
+        
+        @keyframes data-flow {
+            0% { right: -20px; opacity: 0; }
+            50% { right: 100%; opacity: 1; }
+            100% { right: -20px; opacity: 0; }
+        }
+        
+        .secure-icon {
+            animation: secure-pulse 3s infinite;
+        }
+        
+        @keyframes secure-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .terminal-output {
+            background: #000000;
+            border: 1px solid #8b5cf6;
+            font-family: 'Space Mono', monospace;
+            color: #10b981;
+        }
+        
+        .key-visual {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.2));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+    </style>
+</head>
+<body class="vault-bg">
+    <!-- Navigation -->
+    <nav class="vault-panel sticky top-0 z-50 border-b border-purple-500/30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-2">
+                    <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-600 rounded-lg flex items-center justify-center secure-icon">
+                        <span class="text-white font-bold">🔐</span>
+                    </div>
+                    <h1 class="text-3xl font-bold">
+                        <span class="text-purple-400">CRYPTO</span>
+                        <span class="text-white">VAULT</span>
+                    </h1>
+                </div>
+                
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#dashboard" class="text-purple-300 hover:text-purple-100 transition-colors">DASHBOARD</a>
+                    <a href="#wallets" class="text-purple-300 hover:text-purple-100 transition-colors">WALLETS</a>
+                    <a href="#transactions" class="text-purple-300 hover:text-purple-100 transition-colors">TRANSACTIONS</a>
+                    <a href="#security" class="text-purple-300 hover:text-purple-100 transition-colors">SECURITY</a>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 px-3 py-1 bg-green-900/30 rounded-full border border-green-500/50">
+                        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span class="text-green-300 text-sm">SECURE</span>
+                    </div>
+                    
+                    <div class="text-purple-300 font-mono text-sm">
+                        <div id="connection-count">0</div>
+                        <div class="text-xs text-gray-400">CONNECTIONS</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Dashboard -->
+        <section id="dashboard" class="py-12">
+            <h2 class="text-5xl font-bold mb-12 text-center">
+                <span class="text-purple-400">VAULT</span> <span class="text-white">DASHBOARD</span>
+            </h2>
+            
+            <div class="typing-effect w-full max-w-2xl mx-auto mb-12 bg-transparent border border-purple-500/30 rounded-lg p-4">
+                <span class="text-purple-300"></span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                <div class="vault-panel rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                            <span class="text-2xl">💰</span>
+                        </div>
+                        <div class="text-green-400 font-mono text-xs">ENCRYPTED</div>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2 text-purple-300">TOTAL VALUE</h3>
+                    <div class="text-3xl font-bold text-white">$24,567</div>
+                    <div class="text-xs text-gray-400 mt-2">Cryptographically secured</div>
+                </div>
+                
+                <div class="vault-panel rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-pink-500/20 rounded-lg flex items-center justify-center">
+                            <span class="text-2xl">🔐</span>
+                        </div>
+                        <div class="text-green-400 font-mono text-xs">VERIFIED</div>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2 text-pink-300">SECURITY SCORE</h3>
+                    <div class="text-3xl font-bold text-white">100/100</div>
+                    <div class="security-meter h-2 mt-2">
+                        <div class="security-fill w-full"></div>
+                    </div>
+                </div>
+                
+                <div class="vault-panel rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                            <span class="text-2xl">⚡</span>
+                        </div>
+                        <div class="text-green-400 font-mono text-xs">ACTIVE</div>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2 text-blue-300">SPEED</h3>
+                    <div class="text-3xl font-bold text-white">5ms</div>
+                    <div class="text-xs text-gray-400 mt-2">Average response time</div>
+                </div>
+            </div>
+            
+            <div class="vault-panel rounded-xl p-8">
+                <h3 class="text-2xl font-bold mb-6 text-purple-300">VAULT OPERATIONS</h3>
+                <div class="terminal-output rounded-lg p-4 h-64 overflow-y-auto">
+                    <div class="text-purple-400 text-xs mb-2">SYSTEM LOG:</div>
+                    <div id="system-logs" class="space-y-1">
+                        <div>> Vault system initialized</div>
+                        <div>> Encryption keys generated</div>
+                        <div>> Security protocols active</div>
+                        <div>> Backup systems running</div>
+                        <div>> User authentication: Enabled</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Wallets Section -->
+        <section id="wallets" class="py-12">
+            <h2 class="text-5xl font-bold mb-12 text-center">
+                <span class="text-pink-400">SECURE</span> <span class="text-white">WALLETS</span>
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="vault-panel rounded-xl p-6 data-flow">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold mb-2 text-purple-300">MAIN VAULT</h3>
+                            <p class="text-sm text-gray-400">Primary cryptocurrency storage</p>
+                        </div>
+                        <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="glass-morphism rounded-lg p-4">
+                            <div class="text-xs text-gray-400 mb-1">ADDRESS</div>
+                            <div class="font-mono text-purple-400">0x41A9Fbad043922238f0e16EE91d7D9dDC3B44314</div>
+                        </div>
+                        
+                        <div class="glass-morphism rounded-lg p-4">
+                            <div class="text-xs text-gray-400 mb-1">BALANCE</div>
+                            <div class="text-xl font-bold text-green-400">2.456 ETH</div>
+                        </div>
+                        
+                        <div class="glass-morphism rounded-lg p-4">
+                            <div class="text-xs text-gray-400 mb-1">VALUE</div>
+                            <div class="text-xl font-bold text-white">$34,567.89</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="vault-panel rounded-xl p-6">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold mb-2 text-pink-300">BACKUP VAULT</h3>
+                            <p class="text-sm text-gray-400">Secure cold storage</p>
+                        </div>
+                        <div class="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="glass-morphism rounded-lg p-4 encrypted">
+                            <div class="text-xs text-gray-400 mb-1">ENCRYPTED KEY</div>
+                            <div class="font-mono text-pink-400">••••••••••••••••••••••••</div>
+                        </div>
+                        
+                        <div class="glass-morphism rounded-lg p-4">
+                            <div class="text-xs text-gray-400 mb-1">STATUS</div>
+                            <div class="text-green-400 font-bold">🔒 ENCRYPTED</div>
+                        </div>
+                        
+                        <button onclick="triggerBackup()" class="w-full vault-button py-3 px-4 rounded-lg font-bold text-white hover:scale-105 transition-all backup-animation">
+                            🔄 INITIATE BACKUP
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Transactions Section -->
+        <section id="transactions" class="py-12">
+            <h2 class="text-5xl font-bold mb-12 text-center">
+                <span class="text-blue-400">TRANSACTION</span> <span class="text-white">VAULT</span>
+            </h2>
+            
+            <div class="vault-panel rounded-xl p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-2xl font-bold mb-6 text-blue-300">SEND CRYPTO</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="glass-morphism rounded-lg p-4">
+                                <label class="block text-purple-300 text-sm mb-2">RECIPIENT ADDRESS</label>
+                                <input type="text" placeholder="0x..." class="w-full bg-transparent border border-purple-500/30 text-white p-3 rounded-lg focus:border-purple-400 focus:outline-none">
+                            </div>
+                            
+                            <div class="glass-morphism rounded-lg p-4">
+                                <label class="block text-purple-300 text-sm mb-2">AMOUNT (ETH)</label>
+                                <input type="text" placeholder="0.001" class="w-full bg-transparent border border-purple-500/30 text-white p-3 rounded-lg focus:border-purple-400 focus:outline-none">
+                            </div>
+                            
+                            <div class="glass-morphism rounded-lg p-4">
+                                <label class="block text-purple-300 text-sm mb-2">GAS LIMIT</label>
+                                <input type="text" placeholder="21000" class="w-full bg-transparent border border-purple-500/30 text-white p-3 rounded-lg focus:border-purple-400 focus:outline-none">
+                            </div>
+                            
+                            <button onclick="sendTransaction()" class="w-full vault-button py-4 px-6 rounded-lg font-bold text-white">
+                                🚀 EXECUTE TRANSACTION
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-2xl font-bold mb-6 text-purple-300">SECURITY CHECK</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="glass-morphism rounded-lg p-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">FEE ESTIMATE</span>
+                                    <span class="text-green-400">0.001 ETH</span>
+                                </div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">GAS PRICE</span>
+                                    <span class="text-green-400">20 Gwei</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-400">NETWORK STATUS</span>
+                                    <span class="text-green-400">✅ OPTIMAL</span>
+                                </div>
+                            </div>
+                            
+                            <div class="glass-morphism rounded-lg p-4">
+                                <div class="text-sm text-gray-400 mb-2">MULTI‑SIGN REQUIRED</div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center">
+                                        <span class="text-xs">👤</span>
+                                    </div>
+                                    <div class="text-sm">2 of 3 signatures required</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Security Section -->
+        <section id="security" class="py-12">
+            <h2 class="text-5xl font-bold mb-12 text-center">
+                <span class="text-green-400">SECURITY</span> <span class="text-white">CENTER</span>
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="vault-panel rounded-xl p-6">
+                    <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
+                        <span class="text-3xl">🔐</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2 text-green-300">ENCRYPTION</h3>
+                    <p class="text-gray-400 text-sm">256-bit AES encryption for all vault data</p>
+                </div>
+                
+                <div class="vault-panel rounded-xl p-6">
+                    <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
+                        <span class="text-3xl">☁️</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2 text-blue-300">BACKUP</h3>
+                    <p class="text-gray-400 text-sm">Automated multi‑location encrypted backups</p>
+                </div>
+                
+                <div class="vault-panel rounded-xl p-6">
+                    <div class="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mb-4">
+                        <span class="text-3xl">🛡️</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2 text-purple-300">PROTECTION</h3>
+                    <p class="text-gray-400 text-sm">Real‑time fraud detection and prevention</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="vault-panel rounded-xl p-8 max-w-md mx-auto text-center">
+            <div class="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-4xl">✅</span>
+            </div>
+            <h3 class="text-3xl font-bold mb-4 text-green-400">VAULT OPERATION</h3>
+            <p class="text-gray-300 mb-6">Your secure vault operation completed successfully.</p>
+            <div class="text-4xl font-mono text-purple-400 mb-6" id="operation-amount">0.05 ETH</div>
+            <button onclick="closeModal()" class="w-full vault-button py-3 px-6 rounded-lg font-bold text-white">
+                CONFIRM VAULT
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Global state management
+        const state = {
+            connectionCount: 0,
+            systemLogs: [
+                '>> Vault system initialized',
+                '>> Encryption keys generated',
+                '>> Security protocols active',
+                '>> Backup systems running',
+                '>> User authentication: Enabled'
+            ],
+            backupInProgress: false,
+            transactionInProgress: false
+        };
+
+        // Initialize system
+        function initializeSystem() {
+            updateConnectionCount();
+            updateLogs();
+        }
+
+        // Update connection count
+        function updateConnectionCount() {
+            state.connectionCount++;
+            document.getElementById('connection-count').textContent = state.connectionCount;
+        }
+
+        // Update logs display
+        function updateLogs() {
+            const logs = document.getElementById('system-logs');
+            logs.innerHTML = state.systemLogs.map(log => `<div>${log}</div>`).join('') +
+                Array.from(logs.querySelectorAll('div')).slice(-20).map(log => `
+                    <div>${log.textContent}</div>
+                `).join('');
+        }
+
+        // Add system log
+        function addSystemLog(message) {
+            state.systemLogs.unshift(`> ${message}`);
+            if (state.systemLogs.length > 15) {
+                state.systemLogs.splice(15);
+            }
+            updateLogs();
+        }
+
+        // Trigger backup
+        function triggerBackup() {
+            if (state.backupInProgress) return;
+            
+            state.backupInProgress = true;
+            addSystemLog('Initiating backup...');
+            
+            setTimeout(() => {
+                addSystemLog('Backup completed successfully');
+                addSystemLog('Encrypted files stored in secure locations');
+                state.backupInProgress = false;
+            }, 3000);
+        }
+
+        // Send transaction
+        async function sendTransaction() {
+            if (state.transactionInProgress) return;
+            
+            state.transactionInProgress = true;
+            addSystemLog('Validating transaction...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const amount = (Math.random() * 0.5 + 0.1).toFixed(4);
+            addSystemLog(`Transaction initiated: ${amount} ETH`);
+            addSystemLog('Verifying encryption...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            addSystemLog('Transaction successful');
+            addSystemLog('Multi‑signature verified');
+            addSystemLog('Gas fees paid');
+            
+            setTimeout(() => {
+                showSuccessModal(`${amount} ETH`, 'VAULT TRANSFER');
+                state.transactionInProgress = false;
+            }, 2000);
+        }
+
+        // Show success modal
+        function showSuccessModal(amount, action) {
+            document.getElementById('operation-amount').textContent = amount;
+            document.getElementById('success-modal').classList.remove('hidden');
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('success-modal').classList.add('hidden');
+        }
+
+        // Typing effect for dashboard
+        function initializeTyping() {
+            const texts = [
+                "Enter your secure vault...",
+                "Prepare your encryption keys...",
+                "Verify your authentication...",
+                "Initialize vault operations...",
+                "Access your digital assets..."
+            ];
+            
+            const span = document.querySelector('.typing-effect span');
+            let textIndex = 0;
+            let charIndex = 0;
+            
+            function type() {
+                if (charIndex < texts[textIndex].length) {
+                    span.textContent = texts[textIndex].substring(0, charIndex + 1);
+                    charIndex++;
+                    setTimeout(type, 50);
+                } else {
+                    setTimeout(() => {
+                        charIndex = 0;
+                        textIndex = (textIndex + 1) % texts.length;
+                        type();
+                    }, 2000);
+                }
+            }
+            
+            type();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSystem();
+            initializeTyping();
+            addSystemLog('Crypto Vault platform loaded successfully');
+        });
+
+        // Add hover effects
+        document.querySelectorAll('.vault-panel').forEach(panel => {
+            panel.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px) scale(1.02)';
+            });
+            
+            panel.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        document.querySelectorAll('.glass-morphism').forEach(el => {
+            el.addEventListener('mouseenter', function() {
+                this.style.background = 'rgba(255, 255, 255, 0.08)';
+            });
+            
+            el.addEventListener('mouseleave', function() {
+                this.style.background = 'rgba(255, 255, 255, 0.03)';
+            });
+        });
+    </script>
+</body>
+</html>
+    </textarea>
