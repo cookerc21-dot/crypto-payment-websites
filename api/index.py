@@ -1,10 +1,5 @@
-import os
-from flask import Flask, send_from_directory, jsonify, request
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(BASE_DIR)
-
-app = Flask(__name__, static_folder=ROOT_DIR, static_url_path='')
+from http.server import BaseHTTPRequestHandler
+import json
 
 WALLET_ADDRESS = "0x41A9Fbad043922238f0e16EE91d7D9dDC3B44314"
 
@@ -14,27 +9,30 @@ SERVICE_PRICES = {
     "vault-secure-wallet": {"basic": 0.01, "premium": 0.05, "enterprise": 0.20}
 }
 
-@app.route('/')
-def index():
-    return send_from_directory('.', 'index.html')
-
-@app.route('/<path:path>')
-def serve_static(path):
-    return send_from_directory('.', path)
-
-@app.route('/api/verify-payment', methods=['POST'])
-def verify_payment():
-    data = request.get_json()
-    return jsonify({"success": True, "verified": True, "message": "Payment verified on-chain"})
-
-@app.route('/api/prices')
-def get_prices():
-    return jsonify(SERVICE_PRICES)
-
-@app.route('/api/wallet')
-def get_wallet():
-    return jsonify({"address": WALLET_ADDRESS})
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/api/prices':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(SERVICE_PRICES).encode())
+        elif self.path == '/api/wallet':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"address": WALLET_ADDRESS}).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def do_POST(self):
+        if self.path == '/api/verify-payment':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True, "verified": True, "message": "Payment verified on-chain"}).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
