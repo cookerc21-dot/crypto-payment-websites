@@ -1,7 +1,10 @@
 import os
 from flask import Flask, send_from_directory, jsonify, request
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(BASE_DIR)
+
+app = Flask(__name__, static_folder=ROOT_DIR, static_url_path='')
 
 WALLET_ADDRESS = "0x41A9Fbad043922238f0e16EE91d7D9dDC3B44314"
 
