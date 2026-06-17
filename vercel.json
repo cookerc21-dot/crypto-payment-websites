@@ -1,7 +1,6 @@
 {
-  "buildCommand": "echo 'static site'",
+  "buildCommand": "pip install -r requirements.txt",
   "outputDirectory": ".",
-  "framework": "other",
-  "devCommand": "python app.py",
-  "installCommand": "pip install -r requirements.txt"
+  "framework": "flask",
+  "devCommand": "python app.py"
 }
