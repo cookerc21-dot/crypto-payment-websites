@@ -1,5 +1,10 @@
 {
   "buildCommand": "echo 'done'",
   "outputDirectory": ".",
-  "framework": null
+  "framework": "python",
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.12"
+    }
+  }
 }
